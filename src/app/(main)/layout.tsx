@@ -3,6 +3,7 @@ import { Bell, Search, User } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import { HeaderProfileMenu } from '@/components/layout/HeaderProfileMenu'
 import { SiteSelector } from '@/components/layout/SiteSelector'
+import { Suspense } from 'react'
 
 export default function MainLayout({
     children,
@@ -25,7 +26,9 @@ export default function MainLayout({
                     top: '1rem',
                     zIndex: 40
                 }}>
-                    <SiteSelector />
+                    <Suspense fallback={<div>Loading...</div>}>
+                        <SiteSelector />
+                    </Suspense>
 
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <div style={{

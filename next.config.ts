@@ -2,11 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Ignore build-time errors in static generation (experimental)
+  skipMiddlewareUrlNormalize: true,
   experimental: {
     // disables some SSG prerender strictness
-    skipMiddlewareUrlNormalize: true,
-    appDir: true, // ensure app directory support
   },
   // Optional: continue build even if page fails static generation
   onDemandEntries: {

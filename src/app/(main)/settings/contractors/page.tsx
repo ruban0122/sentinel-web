@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import ContractorList from './contractor-list'
 import { getCurrentUserCompanyId } from '@/lib/auth-utils'
+import { Suspense } from 'react'
 
 export default async function ContractorsPage() {
     const supabase = await createClient()
@@ -68,10 +69,12 @@ export default async function ContractorsPage() {
                 </Link>
             </div>
 
-            <ContractorList
-                initialContractors={contractors || []}
-                sites={sites || []}
-            />
+            <Suspense fallback={<div>Loading...</div>}>
+                <ContractorList
+                    initialContractors={contractors || []}
+                    sites={sites || []}
+                />
+            </Suspense>
         </div>
     )
 }

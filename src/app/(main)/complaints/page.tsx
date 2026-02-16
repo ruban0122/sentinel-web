@@ -3,6 +3,7 @@ import { Plus, MessageSquare, MapPin, Calendar, Clock, CheckCircle2, PlayCircle,
 import Link from 'next/link'
 import { getCurrentUserCompanyId } from '@/lib/auth-utils'
 import { StatusTabs } from '@/components/shared/StatusTabs'
+import { Suspense } from 'react'
 
 export default async function ComplaintsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
     const supabase = await createClient()
@@ -69,7 +70,9 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
                 </Link>
             </div>
 
-            <StatusTabs />
+            <Suspense fallback={<div>Loading...</div>}>
+                <StatusTabs />
+            </Suspense>
 
             <div className="card glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>

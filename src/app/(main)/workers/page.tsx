@@ -3,6 +3,7 @@ import { Plus, Upload, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { WorkerToolbar } from './worker-toolbar'
 import { getCurrentUserCompanyId } from '@/lib/auth-utils'
+import { Suspense } from 'react'
 
 export default async function WorkersPage({
     searchParams,
@@ -80,7 +81,9 @@ export default async function WorkersPage({
                 </div>
             </div>
 
-            <WorkerToolbar sites={sites || []} />
+            <Suspense fallback={<div>Loading...</div>}>
+                <WorkerToolbar sites={sites || []} />
+            </Suspense>
 
             <div className="card glass-panel" style={{ padding: '0' }}>
                 <div style={{ overflowX: 'auto' }}>
