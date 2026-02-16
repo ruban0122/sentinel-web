@@ -1,0 +1,122 @@
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.flexBetween {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.statValue {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+
+.statLabel {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+}
+
+.iconBox {
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconBoxActive {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+
+.trend {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 1rem;
+}
+
+.splitGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .splitGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+}
+
+.activityItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.activityItem:last-child {
+    border-bottom: none;
+}
+
+.activityInfo {
+    display: flex;
+    align-items: center;
+}
+
+.avatar {
+    min-width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 1rem;
+}
+
+.avatarSuccess {
+    background-color: hsla(142, 71%, 45%, 0.1);
+    color: hsl(142, 76%, 36%);
+}
+
+.avatarDanger {
+    background-color: hsla(0, 84%, 60%, 0.1);
+    color: hsl(0, 84%, 60%);
+}
+
+.activityTime {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.textSmall {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.textXSmall {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+}
