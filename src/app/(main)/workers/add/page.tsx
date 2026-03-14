@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Building2, Layers } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AddWorkerPage() {
@@ -18,28 +18,103 @@ export default function AddWorkerPage() {
         name: '',
         worker_code: '',
         rfid_tag: '',
-        site_id: '',
-        status: 'active',
-        section: ''
+        status: 'active'
     })
 
-    const [sites, setSites] = useState<any[]>([])
+    const [companyId, setCompanyId] = useState<string | null>(null)
+    const [contractors, setContractors] = useState<any[]>([])
+    const [floors, setFloors] = useState<any[]>([])
+    const [selectedContractor, setSelectedContractor] = useState('')
+    const [selectedFloor, setSelectedFloor] = useState('')
 
     useEffect(() => {
-        async function fetchSites() {
-            const { data } = await supabase.from('sites').select('id, name')
-            if (data) setSites(data)
+        async function init() {
+            // Get current user and their company_id from profile
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('company_id')
+                .eq('uid', user.id)
+                .single()
+
+            const cid = profile?.company_id
+            setCompanyId(cid)
+
+            if (cid) {
+                // Fetch contractors for this company
+                const { data: contractorsData } = await supabase
+                    .from('contractors')
+                    .select('id, name, company_worker_code, floor_id')
+                    .eq('company_id', cid)
+                    .order('name')
+
+                if (contractorsData) setContractors(contractorsData)
+            }
         }
-        fetchSites()
+        init()
     }, [])
+
+    // Fetch floor when contractor is selected
+    useEffect(() => {
+        async function fetchFloorForContractor() {
+            if (!selectedContractor) {
+                setFloors([])
+                setSelectedFloor('')
+                return
+            }
+
+            const contractor = contractors.find(c => c.id === selectedContractor)
+            if (!contractor?.floor_id) {
+                setFloors([])
+                setSelectedFloor('')
+                return
+            }
+
+            // Fetch the specific floor assigned to this contractor
+            const { data: floorData } = await supabase
+                .from('floors')
+                .select(`
+                    id, 
+                    name, 
+                    floor_code,
+                    section_id,
+                    sections(id, name, site_id, sites(name))
+                `)
+                .eq('id', contractor.floor_id)
+                .single()
+
+            if (floorData) {
+                setFloors([floorData])
+                // Auto-select the floor since there's only one
+                setSelectedFloor(floorData.id)
+            }
+        }
+        fetchFloorForContractor()
+    }, [selectedContractor, contractors])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!companyId || !selectedContractor || !selectedFloor) {
+            alert('Please select a contractor and floor assignment.')
+            return
+        }
+
         setLoading(true)
+
+        const floor = floors.find(f => f.id === selectedFloor)
 
         const { error } = await supabase.from('workers').insert({
             id: crypto.randomUUID(),
-            ...formData
+            name: formData.name,
+            worker_code: formData.worker_code,
+            rfid_tag: formData.rfid_tag,
+            status: formData.status,
+            company_id: companyId,
+            site_id: floor?.sections?.site_id,
+            section_id: floor?.section_id,
+            created_at: new Date().toISOString()
         })
 
         if (error) {
@@ -61,7 +136,7 @@ export default function AddWorkerPage() {
 
             <form onSubmit={handleSubmit} className="card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Full Name</label>
+                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Full Name *</label>
                     <input
                         type="text"
                         value={formData.name}
@@ -82,7 +157,7 @@ export default function AddWorkerPage() {
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>RFID Tag ID</label>
+                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>RFID Tag ID *</label>
                         <input
                             type="text"
                             value={formData.rfid_tag}
@@ -94,34 +169,101 @@ export default function AddWorkerPage() {
                     </div>
                 </div>
 
-                <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Assign Site</label>
-                    <select
-                        value={formData.site_id}
-                        onChange={e => setFormData({ ...formData, site_id: e.target.value })}
-                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', background: 'hsl(var(--background))', color: 'inherit', border: '1px solid hsl(var(--border))', outline: 'none' }}
-                    >
-                        <option value="">Select a Site...</option>
-                        {sites.map(site => (
-                            <option key={site.id} value={site.id}>{site.name}</option>
-                        ))}
-                    </select>
-                </div>
+                <div style={{ paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Assignment</h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {/* Contractor Selection */}
+                        <div>
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                marginBottom: '0.5rem'
+                            }}>
+                                <Building2 size={16} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                Contractor *
+                            </label>
+                            <select
+                                value={selectedContractor}
+                                onChange={(e) => setSelectedContractor(e.target.value)}
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius)',
+                                    background: 'hsl(var(--background))',
+                                    color: 'inherit',
+                                    border: '1px solid hsl(var(--border))',
+                                    outline: 'none'
+                                }}
+                            >
+                                <option value="">Select a contractor...</option>
+                                {contractors.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name} {c.company_worker_code && `(${c.company_worker_code})`}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Section / Floor</label>
-                    <input
-                        type="text"
-                        value={formData.section}
-                        onChange={e => setFormData({ ...formData, section: e.target.value })}
-                        placeholder="e.g. Floor 3, Zone A"
-                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', background: 'hsl(var(--background))', color: 'inherit', border: '1px solid hsl(var(--border))', outline: 'none' }}
-                    />
+                        {/* Floor Selection */}
+                        <div>
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                marginBottom: '0.5rem'
+                            }}>
+                                <Layers size={16} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                Floor Assignment *
+                            </label>
+                            <select
+                                value={selectedFloor}
+                                onChange={(e) => setSelectedFloor(e.target.value)}
+                                disabled={!selectedContractor || floors.length === 0}
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius)',
+                                    background: selectedFloor ? 'hsl(var(--muted))' : 'hsl(var(--background))',
+                                    color: 'inherit',
+                                    border: '1px solid hsl(var(--border))',
+                                    outline: 'none',
+                                    cursor: !selectedContractor ? 'not-allowed' : 'default',
+                                    opacity: !selectedContractor ? 0.6 : 1
+                                }}
+                            >
+                                {!selectedContractor ? (
+                                    <option value="">Select a contractor first...</option>
+                                ) : floors.length === 0 ? (
+                                    <option value="">No floor assigned to this contractor</option>
+                                ) : (
+                                    floors.map(f => (
+                                        <option key={f.id} value={f.id}>
+                                            {f.name} ({f.floor_code}) - {f.sections?.sites?.name || 'Unknown Site'}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                            <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.5rem' }}>
+                                {selectedFloor
+                                    ? '✓ Floor automatically assigned based on contractor'
+                                    : 'Floor will be auto-selected when you choose a contractor'
+                                }
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                     <Link href="/workers" className="btn btn-ghost" style={{ border: '1px solid hsl(var(--border))' }}>Cancel</Link>
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
+                    <button type="submit" className="btn btn-primary" disabled={loading || !selectedContractor || !selectedFloor}>
                         {loading ? 'Creating...' : 'Create Worker'}
                     </button>
                 </div>
