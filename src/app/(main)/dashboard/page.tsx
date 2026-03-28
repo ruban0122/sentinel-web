@@ -1,4 +1,4 @@
-import { Users, UserCheck, UserX, Clock, Building2, MapPin, TrendingUp, TrendingDown } from 'lucide-react'
+import { Users, UserCheck, UserX, Clock, Building2, MapPin, TrendingUp, TrendingDown, Wifi, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUserCompanyId } from '@/lib/auth-utils'
 import Link from 'next/link'
@@ -70,7 +70,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         { count: totalWorkers },
         { data: todayAttendance },
         { data: sites },
-        { data: recentAttendance }
+        { data: recentAttendance },
+        { data: rfidLogs }
     ] = await Promise.all([
         // Total workers in company (Always Company-wide for now unless we have direct site_id on workers)
         // If we want site-specific workers, we'd need to know if workers has site_id.
@@ -83,7 +84,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         todayAttendanceQuery,
         sitesQuery,
-        recentAttendanceQuery
+        recentAttendanceQuery,
+
+        // Live RFID feed from IoT device
+        supabase
+            .from('updated_rfid_log')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(8)
     ])
 
     // Calculate stats
@@ -143,7 +151,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
 
             {/* Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
                 {/* Recent Activity */}
                 <div className="card glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
                     <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -285,6 +293,88 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         )}
                     </div>
                 </div>
+
+                {/* Live RFID Feed */}
+                <div className="card glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+                    <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Wifi size={16} style={{ color: 'hsl(142, 71%, 45%)' }} />
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Live RFID Feed</h3>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: 'hsl(142, 71%, 45%)',
+                                display: 'inline-block',
+                                boxShadow: '0 0 0 3px hsla(142, 71%, 45%, 0.25)',
+                                animation: 'pulse 2s infinite'
+                            }} />
+                            <Link href="/attendance" className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', height: 'auto' }}>
+                                View All
+                            </Link>
+                        </div>
+                    </div>
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {rfidLogs && rfidLogs.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {rfidLogs.map((log: any) => {
+                                    const isCheckIn = log.attendance?.toLowerCase().includes('check in')
+                                    return (
+                                        <div key={log.id} style={{
+                                            padding: '0.875rem 1.5rem',
+                                            borderBottom: '1px solid hsla(var(--border), 0.5)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem'
+                                        }}>
+                                            <div style={{
+                                                height: '2rem',
+                                                width: '2rem',
+                                                borderRadius: '50%',
+                                                background: isCheckIn ? 'hsla(142, 76%, 36%, 0.1)' : 'hsla(0, 71%, 55%, 0.1)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0
+                                            }}>
+                                                {isCheckIn
+                                                    ? <CheckCircle size={14} style={{ color: 'hsl(142, 76%, 36%)' }} />
+                                                    : <XCircle size={14} style={{ color: 'hsl(0, 71%, 55%)' }} />
+                                                }
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'hsl(var(--foreground))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {log.tag_hex}
+                                                </p>
+                                                <p style={{ fontSize: '0.7rem', color: 'hsl(var(--muted-foreground))' }}>
+                                                    {log.work_date} · {new Date(log.event_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            </div>
+                                            <span style={{
+                                                fontSize: '0.7rem',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '1rem',
+                                                background: isCheckIn ? 'hsla(142, 76%, 36%, 0.1)' : 'hsla(0, 71%, 55%, 0.1)',
+                                                color: isCheckIn ? 'hsl(142, 76%, 36%)' : 'hsl(0, 71%, 55%)',
+                                                fontWeight: 600,
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                {isCheckIn ? 'IN' : 'OUT'}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>
+                                <Wifi size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+                                <p>No RFID events received yet</p>
+                                <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Waiting for IoT device data...</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </div>
         </div>
     )
