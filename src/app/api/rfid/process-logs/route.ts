@@ -63,7 +63,9 @@ export async function POST(request: Request) {
 
             // ── 3. Build timestamps ───────────────────────────────────────────
             // event_time from device has no timezone — treat as UTC
-            const checkOutMs = new Date(event_time).getTime()
+            const timeString = event_time.includes('T') ? event_time : event_time.replace(' ', 'T')
+            const utcTimeString = timeString.endsWith('Z') ? timeString : `${timeString}Z`
+            const checkOutMs = new Date(utcTimeString).getTime()
             const checkOutTimestamp = new Date(checkOutMs).toISOString()
 
             // Derive check-in time from total_working_hour (in hours) if available
